@@ -46,7 +46,7 @@ function updateOfflineBanner() {
 
 function setTodayDates() {
   const today = localDateStr();
-  ['shotDate', 'orderDate', 'weightDate', 'stepsDate'].forEach(id => {
+  ['shotDate', 'orderDate', 'weightDate', 'stepsDate', 'photoDate'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = today;
   });
@@ -136,6 +136,8 @@ function renderAll() {
   updateVialsList();
   updateWeightList();
   updateProteinList();
+  updatePhotoGrid();
+  updateVialAlert();
   populateVialSelect();
   updateGoalFields();
   updateWithingsBtn();
@@ -425,6 +427,137 @@ function submitOrQueue(action, payload, onSettled) {
     queueAction(action, payload);
     onSettled();
   });
+}
+
+// ---------- Low vial stock alert ----------
+const VIAL_LOW_THRESHOLD = 2; // adjust here if you want the alert to fire earlier/later
+
+function updateVialAlert() {
+  const banner = document.getElementById('vialAlertBanner');
+  if (!appData) { banner.className = ''; return; }
+  const vialsLeft = (appData.vials || []).filter(v => v.Status !== 'Empty').length;
+  const pendingOrder = (appData.orders || []).some(o => !o['Received Date']);
+  if (vialsLeft <= VIAL_LOW_THRESHOLD && !pendingOrder) {
+    banner.textContent = `⚠️ Only ${vialsLeft} vial${vialsLeft === 1 ? '' : 's'} left and no order pending — might be time to reorder.`;
+    banner.className = 'show';
+  } else {
+    banner.className = '';
+  }
+}
+
+// ---------- Shot reminder calendar export ----------
+function icsTimestamp() {
+  return new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+}
+
+function addShotReminderToCalendar() {
+  const cfg = (appData && appData.config) || {};
+  const nextShotDate = cfg['Next Shot Date'];
+  if (!nextShotDate) { alert('No next shot date set yet — record a shot first.'); return; }
+
+  const dt = nextShotDate.replace(/-/g, '');
+  const uid = 'shot-' + nextShotDate + '@wellness-tracker';
+  const currentVial = cfg['Current Vial'] || '';
+
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Wellness Tracker//EN', 'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    'UID:' + uid,
+    'DTSTAMP:' + icsTimestamp(),
+    'DTSTART:' + dt + 'T090000',
+    'DTEND:' + dt + 'T093000',
+    'SUMMARY:Tirzepatide Shot Due',
+    'DESCRIPTION:Time for your next injection. Current vial: ' + currentVial,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Shot due tomorrow - check vial stock', 'TRIGGER:-P1D', 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'next-shot-reminder.ics';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ---------- Progress photos ----------
+// Resizes/compresses in the browser before upload so mobile data and the
+// GAS request body stay small.
+function compressImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => { img.src = reader.result; };
+    reader.onerror = reject;
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxDim) { height *= maxDim / width; width = maxDim; }
+      else if (height > maxDim) { width *= maxDim / height; height = maxDim; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', quality || 0.8);
+      resolve(dataUrl.split(',')[1]); // strip the data: prefix, keep base64 only
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function submitPhoto() {
+  const fileInput = document.getElementById('photoFile');
+  const file = fileInput.files[0];
+  if (!file) { alert('Choose a photo first.'); return; }
+  if (!isOnline) { alert('Photos need a connection to upload - try again once you\'re back online.'); return; }
+
+  const btn = document.getElementById('photoSubmitBtn');
+  btn.textContent = 'Uploading...'; btn.disabled = true;
+
+  compressImage(file, 1200, 0.8).then(base64 => {
+    const payload = {
+      date: document.getElementById('photoDate').value || todayStr(),
+      imageBase64: base64,
+      mimeType: 'image/jpeg',
+      notes: document.getElementById('photoNotes').value
+    };
+    return apiPost({ action: 'addPhoto', payload });
+  }).then(result => {
+    btn.textContent = 'Upload Photo'; btn.disabled = false;
+    if (result && result.success) {
+      fileInput.value = '';
+      document.getElementById('photoNotes').value = '';
+      loadData();
+    } else {
+      alert('Upload failed: ' + (result && result.error ? result.error : 'unknown error'));
+    }
+  }).catch(err => {
+    btn.textContent = 'Upload Photo'; btn.disabled = false;
+    alert('Upload failed: ' + err);
+  });
+}
+
+function updatePhotoGrid() {
+  const grid = document.getElementById('photoGrid');
+  const photos = ((appData && appData.photos) || []).slice().reverse();
+  if (photos.length === 0) { grid.innerHTML = '<p style="color:#999;padding:16px;">No progress photos yet.</p>'; return; }
+  grid.innerHTML = photos.map((p, i) => `
+    <div class="photo-thumb" onclick="viewPhoto(${photos.length - 1 - i})">
+      <img src="${p['Thumbnail URL']}" alt="Progress photo ${fmtDate(p.Date)}" loading="lazy">
+      <div class="photo-date">${fmtDate(p.Date)}</div>
+    </div>
+  `).join('');
+  window._photosCache = ((appData && appData.photos) || []);
+}
+
+function viewPhoto(index) {
+  const photos = window._photosCache || [];
+  const p = photos[index];
+  if (!p) return;
+  document.getElementById('photoViewTitle').textContent = fmtDate(p.Date);
+  document.getElementById('photoViewImg').src = p['Thumbnail URL'].replace('sz=w600', 'sz=w1200');
+  document.getElementById('photoViewNotes').textContent = p.Notes || '';
+  document.getElementById('photoViewModal').classList.add('active');
 }
 
 // ---------- Lists ----------
