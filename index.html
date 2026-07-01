@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Wellness &amp; Shot Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e3a8a">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="offlineBanner"></div>
+
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <h1>Wellness &amp; Shot Tracker</h1>
+        <p id="todayLabel">--</p>
+      </div>
+      <div class="streak-pill" id="streakPill">🔥 0 day streak</div>
+    </div>
+    <div class="header-buttons">
+      <button class="header-btn" id="refreshBtn" onclick="refreshData()">Refresh</button>
+      <a id="sheetLink" class="header-btn" href="#" target="_blank">Open Sheet</a>
+      <button class="header-btn" id="withingsBtn" onclick="withingsAction()">Connect Withings</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Signature rings panel -->
+    <div class="rings-panel">
+      <div class="cycle-row">
+        <div class="cycle-ring-wrap">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="42" fill="none" stroke="#e2e8f0" stroke-width="9"/>
+            <circle id="cycleRing" cx="48" cy="48" r="42" fill="none" stroke="#3b82f6" stroke-width="9" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264"/>
+          </svg>
+          <div class="cycle-ring-center">
+            <div class="big num" id="cycleDaysLeft">-</div>
+            <div class="small">days left</div>
+          </div>
+        </div>
+        <div class="cycle-info">
+          <div class="label">Next Shot</div>
+          <div class="value" id="nextShotDate">--</div>
+          <div class="sub" id="currentVialSub">--</div>
+        </div>
+      </div>
+
+      <div class="mini-rings">
+        <div class="mini-ring-card">
+          <div class="mini-ring-wrap">
+            <svg width="68" height="68" viewBox="0 0 68 68">
+              <circle cx="34" cy="34" r="29" fill="none" stroke="#e2e8f0" stroke-width="7"/>
+              <circle id="stepsRing" cx="34" cy="34" r="29" fill="none" stroke="#38bdf8" stroke-width="7" stroke-linecap="round" stroke-dasharray="182" stroke-dashoffset="182"/>
+            </svg>
+            <div class="mini-ring-center num" id="stepsRingLabel">0%</div>
+          </div>
+          <div class="mini-ring-name">Steps</div>
+          <div class="mini-ring-detail num" id="stepsDetail">0 / 0</div>
+        </div>
+        <div class="mini-ring-card">
+          <div class="mini-ring-wrap">
+            <svg width="68" height="68" viewBox="0 0 68 68">
+              <circle cx="34" cy="34" r="29" fill="none" stroke="#e2e8f0" stroke-width="7"/>
+              <circle id="hydrationRing" cx="34" cy="34" r="29" fill="none" stroke="#10b981" stroke-width="7" stroke-linecap="round" stroke-dasharray="182" stroke-dashoffset="182"/>
+            </svg>
+            <div class="mini-ring-center num" id="hydrationRingLabel">0%</div>
+          </div>
+          <div class="mini-ring-name">Water</div>
+          <div class="mini-ring-detail num" id="hydrationDetail">0 / 0 oz</div>
+        </div>
+        <div class="mini-ring-card">
+          <div class="mini-ring-wrap">
+            <svg width="68" height="68" viewBox="0 0 68 68">
+              <circle cx="34" cy="34" r="29" fill="none" stroke="#e2e8f0" stroke-width="7"/>
+              <circle id="proteinRing" cx="34" cy="34" r="29" fill="none" stroke="#f59e0b" stroke-width="7" stroke-linecap="round" stroke-dasharray="182" stroke-dashoffset="182"/>
+            </svg>
+            <div class="mini-ring-center num" id="proteinRingLabel">0%</div>
+          </div>
+          <div class="mini-ring-name">Protein</div>
+          <div class="mini-ring-detail num" id="proteinDetail">0 / 0 g</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard">
+      <div class="card"><h3>Total Shots</h3><div class="value num" id="totalShots">0</div><div class="label">Injections recorded</div></div>
+      <div class="card"><h3>Latest Weight</h3><div class="value num" id="latestWeight">--</div><div class="label" id="weightChangeLabel">--</div></div>
+      <div class="card"><h3>Current Vial</h3><div class="value num" id="currentVial">--</div><div class="label">Remaining dosage</div></div>
+    </div>
+
+    <div class="sparkline-card">
+      <h3>Weight Trend (last 20 entries)</h3>
+      <svg id="sparkline" viewBox="0 0 300 60" preserveAspectRatio="none"></svg>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="calendar" onclick="switchTab(event,'calendar')">Calendar</div>
+      <div class="tab" data-tab="shots" onclick="switchTab(event,'shots')">Shots</div>
+      <div class="tab" data-tab="vials" onclick="switchTab(event,'vials')">Vials</div>
+      <div class="tab" data-tab="weight" onclick="switchTab(event,'weight')">Weight</div>
+      <div class="tab" data-tab="activity" onclick="switchTab(event,'activity')">Activity</div>
+    </div>
+
+    <div id="calendar" class="tab-content active">
+      <div class="rings-panel">
+        <div class="cycle-row" style="margin-bottom:14px;">
+          <button class="header-btn" style="background:#e2e8f0;color:#1e293b;" onclick="prevMonth()">‹ Prev</button>
+          <h2 id="currentMonth" style="flex:1;text-align:center;color:var(--navy-800);font-size:16px;">Loading...</h2>
+          <button class="header-btn" style="background:#e2e8f0;color:#1e293b;" onclick="nextMonthFn()">Next ›</button>
+        </div>
+        <div id="calendarGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;font-size:11px;"></div>
+      </div>
+    </div>
+
+    <div id="shots" class="tab-content">
+      <div class="rings-panel">
+        <div style="text-align:right;margin-bottom:10px;"><button class="quick-btn" style="flex:none;" onclick="openExportModal('shots')">Export Shots</button></div>
+        <div id="shotsList">Loading...</div>
+      </div>
+    </div>
+
+    <div id="vials" class="tab-content">
+      <div class="rings-panel"><div id="vialsList">Loading...</div></div>
+    </div>
+
+    <div id="weight" class="tab-content">
+      <div class="rings-panel">
+        <div style="text-align:right;margin-bottom:10px;"><button class="quick-btn" style="flex:none;" onclick="openExportModal('weight')">Export Weight</button></div>
+        <div id="weightList">Loading...</div>
+      </div>
+    </div>
+
+    <div id="activity" class="tab-content">
+      <div class="rings-panel">
+        <h3 style="margin-bottom:10px;color:var(--navy-800);">Log Water</h3>
+        <div class="quick-row">
+          <button class="quick-btn" onclick="quickAddWater(8)">+8 oz</button>
+          <button class="quick-btn" onclick="quickAddWater(16)">+16 oz</button>
+          <button class="quick-btn" onclick="quickAddWater(24)">+24 oz</button>
+          <button class="quick-btn" onclick="openModal('water')">Custom</button>
+        </div>
+      </div>
+      <div class="rings-panel">
+        <h3 style="margin-bottom:10px;color:var(--navy-800);">Protein Today</h3>
+        <div id="proteinList" style="margin-bottom:10px;"></div>
+        <button class="btn" onclick="openModal('protein')">Log Protein</button>
+      </div>
+      <div class="rings-panel">
+        <h3 style="margin-bottom:10px;color:var(--navy-800);">Steps Today</h3>
+        <button class="btn" onclick="openModal('steps')">Update Steps</button>
+      </div>
+      <div class="rings-panel">
+        <h3 style="margin-bottom:10px;color:var(--navy-800);">Daily Goals</h3>
+        <div class="form-group"><label>Steps Goal</label><input type="number" id="goalSteps"></div>
+        <div class="form-group"><label>Hydration Goal (oz)</label><input type="number" id="goalHydration"></div>
+        <div class="form-group"><label>Protein Goal (g)</label><input type="number" id="goalProtein"></div>
+        <button class="btn" onclick="saveGoals()">Save Goals</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="fab-container">
+    <button class="fab" onclick="openModal('shot')" title="Record Shot">💉</button>
+    <button class="fab" onclick="openModal('weight')" title="Log Weight">⚖️</button>
+    <button class="fab" onclick="openModal('order')" title="Add Order">📦</button>
+  </div>
+
+  <!-- Shot Modal -->
+  <div id="shotModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h2>Record Shot</h2><button class="close-btn" onclick="closeModal('shot')">&times;</button></div>
+      <div class="site-suggestion" id="siteSuggestion" style="display:none;"></div>
+      <form onsubmit="submitShot(event)">
+        <div class="form-group"><label>Date *</label><input type="date" id="shotDate" required></div>
+        <div class="form-group"><label>Vial *</label><select id="shotVial" required></select></div>
+        <div class="form-group"><label>Dosage (mg) *</label><input type="number" id="shotDosage" step="0.1" required></div>
+        <div class="form-group">
+          <label>Injection Location *</label>
+          <select id="shotLocation" required>
+            <option value="">Select location...</option>
+            <option value="Abdomen - Left Side">Abdomen - Left Side</option>
+            <option value="Abdomen - Right Side">Abdomen - Right Side</option>
+            <option value="Upper Arm - Left">Upper Arm - Left</option>
+            <option value="Upper Arm - Right">Upper Arm - Right</option>
+            <option value="Upper Leg - Right">Upper Leg - Right</option>
+            <option value="Upper Leg - Left">Upper Leg - Left</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Notes</label><textarea id="shotNotes" rows="2"></textarea></div>
+        <button type="submit" class="btn" id="shotSubmitBtn">Record Shot</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('shot')">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Order Modal -->
+  <div id="orderModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h2>Add Order</h2><button class="close-btn" onclick="closeModal('order')">&times;</button></div>
+      <form onsubmit="submitOrder(event)">
+        <div class="form-group"><label>Order Date *</label><input type="date" id="orderDate" required></div>
+        <div class="form-group"><label>Received Date</label><input type="date" id="receivedDate"></div>
+        <div class="form-group"><label>Number of Vials *</label><input type="number" id="vialCount" min="1" required></div>
+        <div class="form-group"><label>Dosage per Vial (mg) *</label><input type="number" id="dosagePerVial" step="0.1" required value="30"></div>
+        <button type="submit" class="btn" id="orderSubmitBtn">Add Order</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('order')">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Weight Modal -->
+  <div id="weightModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h2>Log Weight</h2><button class="close-btn" onclick="closeModal('weight')">&times;</button></div>
+      <form onsubmit="submitWeight(event)">
+        <div class="form-group"><label>Date *</label><input type="date" id="weightDate" required></div>
+        <div class="form-group"><label>Weight (lbs) *</label><input type="number" id="weightValue" step="0.1" required></div>
+        <div class="form-group"><label>Notes</label><textarea id="weightNotes" rows="2"></textarea></div>
+        <button type="submit" class="btn" id="weightSubmitBtn">Log Weight</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('weight')">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Steps Modal -->
+  <div id="stepsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h2>Update Steps</h2><button class="close-btn" onclick="closeModal('steps')">&times;</button></div>
+      <form onsubmit="submitSteps(event)">
+        <div class="form-group"><label>Date *</label><input type="date" id="stepsDate" required></div>
+        <div class="form-group"><label>Steps *</label><input type="number" id="stepsValue" required></div>
+        <button type="submit" class="btn" id="stepsSubmitBtn">Save Steps</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('steps')">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Water Modal -->
+  <div id="waterModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h2>Log Water</h2><button class="close-btn" onclick="closeModal('water')">&times;</button></div>
+      <form onsubmit="submitWater(event)">
+        <div class="form-group"><label>Amount (oz) *</label><input type="number" id="waterValue" required></div>
+        <button type="submit" class="btn" id="waterSubmitBtn">Log Water</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('water')">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Protein Modal -->
+  <div id="proteinModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h2>Log Protein</h2><button class="close-btn" onclick="closeModal('protein')">&times;</button></div>
+      <form onsubmit="submitProtein(event)">
+        <div class="form-group"><label>Grams *</label><input type="number" id="proteinValue" required></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="proteinNotes" placeholder="e.g. chicken breast"></div>
+        <button type="submit" class="btn" id="proteinSubmitBtn">Log Protein</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('protein')">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Day Details Modal -->
+  <div id="dayModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h2 id="dayModalTitle">Day Details</h2><button class="close-btn" onclick="closeModal('day')">&times;</button></div>
+      <div id="dayModalContent" style="max-height:400px;overflow-y:auto;"></div>
+      <button type="button" class="btn btn-secondary" onclick="closeModal('day')" style="margin-top:16px;">Close</button>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div id="exportModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h2 id="exportModalTitle">Export Data</h2><button class="close-btn" onclick="closeModal('export')">&times;</button></div>
+      <button type="button" class="btn" onclick="downloadExport()">Download CSV File</button>
+      <button type="button" class="btn" onclick="emailExport()" style="background:#2563eb;">Email to Me</button>
+      <button type="button" class="btn btn-secondary" onclick="closeModal('export')">Cancel</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
