@@ -45,11 +45,22 @@ function updateOfflineBanner() {
 }
 
 function setTodayDates() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr();
   ['shotDate', 'orderDate', 'weightDate', 'stepsDate'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = today;
   });
+}
+
+// Local calendar date as YYYY-MM-DD. Deliberately avoids toISOString(),
+// which converts to UTC and rolls over to the next day during evening
+// hours in US time zones - that mismatch was hiding same-day entries.
+function localDateStr(d) {
+  d = d || new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 // ---------- Offline queue ----------
@@ -139,7 +150,7 @@ function setRing(circleEl, pct) {
   circleEl.setAttribute('stroke-dashoffset', (circumference * (1 - clamped)).toFixed(1));
 }
 
-function todayStr() { return new Date().toISOString().split('T')[0]; }
+function todayStr() { return localDateStr(); }
 
 function updateRings() {
   if (!appData) return;
@@ -238,7 +249,7 @@ function updateStreak() {
   let streak = 0;
   let cursor = new Date();
   while (true) {
-    const dStr = cursor.toISOString().split('T')[0];
+    const dStr = localDateStr(cursor);
     if (daySets.has(dStr)) { streak++; cursor.setDate(cursor.getDate() - 1); }
     else break;
   }
@@ -417,7 +428,7 @@ function submitOrQueue(action, payload, onSettled) {
 }
 
 // ---------- Lists ----------
-function fmtDate(d) { if (!d) return ''; return new Date(d + 'T00:00:00').toISOString().split('T')[0]; }
+function fmtDate(d) { if (!d) return ''; return localDateStr(new Date(d + 'T00:00:00')); }
 
 function updateShotsList() {
   const el = document.getElementById('shotsList');
@@ -497,7 +508,7 @@ function updateCalendar() {
 
 function dayCell(num, otherMonth, date) {
   const div = document.createElement('div');
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = localDateStr(date);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const isToday = date.getTime() === today.getTime();
   div.style.cssText = `aspect-ratio:1;border:1.5px solid ${isToday ? '#3b82f6' : '#e2e8f0'};border-radius:8px;padding:4px;cursor:pointer;background:#fff;${otherMonth ? 'opacity:0.3;' : ''}${isToday ? 'background:#dbeafe;font-weight:700;' : ''}`;
