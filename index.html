@@ -7,12 +7,15 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e3a8a">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="offlineBanner"></div>
+  <div id="vialAlertBanner"></div>
 
   <div class="header">
     <div class="header-row">
@@ -48,6 +51,7 @@
           <div class="label">Next Shot</div>
           <div class="value" id="nextShotDate">--</div>
           <div class="sub" id="currentVialSub">--</div>
+          <button class="quick-btn" style="margin-top:10px;flex:none;padding:8px 14px;font-size:12px;" onclick="addShotReminderToCalendar()">📅 Add Reminder to Calendar</button>
         </div>
       </div>
 
@@ -105,6 +109,7 @@
       <div class="tab" data-tab="vials" onclick="switchTab(event,'vials')">Vials</div>
       <div class="tab" data-tab="weight" onclick="switchTab(event,'weight')">Weight</div>
       <div class="tab" data-tab="activity" onclick="switchTab(event,'activity')">Activity</div>
+      <div class="tab" data-tab="photos" onclick="switchTab(event,'photos')">Photos</div>
     </div>
 
     <div id="calendar" class="tab-content active">
@@ -161,6 +166,21 @@
         <div class="form-group"><label>Hydration Goal (oz)</label><input type="number" id="goalHydration"></div>
         <div class="form-group"><label>Protein Goal (g)</label><input type="number" id="goalProtein"></div>
         <button class="btn" onclick="saveGoals()">Save Goals</button>
+      </div>
+    </div>
+
+    <div id="photos" class="tab-content">
+      <div class="rings-panel">
+        <h3 style="margin-bottom:10px;color:var(--navy-800);">Add Progress Photo</h3>
+        <div class="form-group"><label>Photo</label><input type="file" id="photoFile" accept="image/*" capture="environment"></div>
+        <div class="form-group"><label>Date</label><input type="date" id="photoDate"></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="photoNotes" placeholder="optional"></div>
+        <button class="btn" id="photoSubmitBtn" onclick="submitPhoto()">Upload Photo</button>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:8px;">Photos upload directly to your Drive and need a connection - they don't queue offline like other entries.</p>
+      </div>
+      <div class="rings-panel">
+        <h3 style="margin-bottom:10px;color:var(--navy-800);">Timeline</h3>
+        <div class="photo-grid" id="photoGrid">Loading...</div>
       </div>
     </div>
 
@@ -273,6 +293,16 @@
       <div class="modal-header"><h2 id="dayModalTitle">Day Details</h2><button class="close-btn" onclick="closeModal('day')">&times;</button></div>
       <div id="dayModalContent" style="max-height:400px;overflow-y:auto;"></div>
       <button type="button" class="btn btn-secondary" onclick="closeModal('day')" style="margin-top:16px;">Close</button>
+    </div>
+  </div>
+
+  <!-- Photo Viewer Modal -->
+  <div id="photoViewModal" class="modal">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header"><h2 id="photoViewTitle">Photo</h2><button class="close-btn" onclick="closeModal('photoView')">&times;</button></div>
+      <img id="photoViewImg" src="" style="width:100%;border-radius:8px;" alt="Progress photo">
+      <p id="photoViewNotes" style="margin-top:10px;color:var(--ink-soft);font-size:13px;"></p>
+      <button type="button" class="btn btn-secondary" onclick="closeModal('photoView')" style="margin-top:14px;">Close</button>
     </div>
   </div>
 
